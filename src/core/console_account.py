@@ -331,10 +331,11 @@ class ConsoleAccount(ConsoleAppSettings):
                             safe_box=True
                         )
                     )
-                    self.__console.print('-> ПРОГРАММА ЗАКРОЕТСЯ САМА <-', style='#8c8eff', justify='center')
             except AttributeError:
                 pass
 
+        self.__console.print('-> ПРОГРАММА ЗАКРОЕТСЯ САМА <-', style='#8c8eff', justify='center')
+        
         if hasattr(self, f'_{self.__class__.__name__}__account'):
             self.__account.quit()
         exit(0)
