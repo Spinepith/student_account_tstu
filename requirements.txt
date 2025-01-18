@@ -1,0 +1,6 @@
+fake-useragent==1.5.1
+selenium==4.27.1
+art==6.4
+rich==13.9.4
+questionary==2.0.1
+cryptography==44.0.0
