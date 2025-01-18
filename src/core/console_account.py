@@ -49,7 +49,7 @@ class ConsoleAccount(ConsoleAppSettings):
 
         if not self.__json_manager.find_file('user_data.json'):
             self.__warning_panel(
-                Text('Если ввели неверный логин и перешли к паролю, напишите "назад"', justify='center'),
+                Text('Если ввели неверный логин и перешли к паролю, напишите "назад" или "back"', justify='center'),
                 end='\n'
             )
 
