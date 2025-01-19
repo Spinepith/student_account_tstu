@@ -16,7 +16,7 @@ def logger(logger_name: str, error: Exception):
     raise error
 
 
-if __name__ == '__main__':
+def main():
     try:
         with open("../requirements.txt", "r") as file:
             reqs = [req.strip('\n') for req in file.readlines()]
@@ -30,7 +30,6 @@ if __name__ == '__main__':
             if req not in installed:
                 not_installed.append(req)
 
-
         def timer_thread(start_time, stop):
             while not stop.is_set():
                 total_seconds = time.time() - start_time
@@ -41,7 +40,6 @@ if __name__ == '__main__':
                            f'{"0" + str(int(minutes))}:'
                            f'{str(seconds)[:2] if seconds >= 10 else "0" + str(seconds)[:1]}')
                 print(f'\033[6;1H\033[35m{" " * ((width - len(elapsed)) // 2)}{elapsed}\033[0m', end='\r')
-
 
         if not_installed:
             os.system('cls' if os.name == 'nt' else 'clear')
@@ -104,3 +102,7 @@ if __name__ == '__main__':
                 timer.join()
     except Exception as e:
         logger('INSTALL_REQUIREMENTS_LOGGER', e)
+
+
+if __name__ == "__main__":
+    main()
