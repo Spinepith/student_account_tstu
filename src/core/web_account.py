@@ -25,12 +25,12 @@ class WebAccount:
         options.add_argument('--disable-gpu')
         options.add_argument(f'user-agent={user_agent}')
         options.add_argument('--disable-blink-features=AutomationControlled')
-        options.add_argument('--headless')
+        options.add_argument('--headless=new')
+        options.set_capability("browserVersion", "117")
         options.add_argument('--ignore-certificate-errors-spki-list')
         options.add_experimental_option('detach', True)
 
         service = webdriver.ChromeService(log_path=os.devnull)
-        service.creation_flags = subprocess.CREATE_NO_WINDOW
         service.log_output = subprocess.DEVNULL
 
         self.__browser = webdriver.Chrome(service=service, options=options)

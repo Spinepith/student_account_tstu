@@ -7,13 +7,15 @@ class JSONManager:
     __directory: str
     __files: list
 
-    def __init__(self, directory: str = None):
+    def __init__(self, directory: str = None, create: bool = False):
         if directory:
-            self.set_directory(directory)
+            self.set_directory(directory, create)
 
-    def set_directory(self, directory: str):
+    def set_directory(self, directory: str, create=False):
         if not os.path.exists(directory):
-            raise FileNotFoundError
+            if not create:
+                raise FileNotFoundError
+            os.makedirs(directory, exist_ok=True)
 
         self.__is_dir = True
         self.__directory = directory

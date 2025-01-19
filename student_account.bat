@@ -2,12 +2,13 @@
 chcp 65001 >nul
 
 cls
+cd /d %~dp0
 
-IF NOT EXIST ".venv" (
-    echo Создание виртуального окружения
-    python -m venv .venv
+IF NOT EXIST "libs" (
+    mkdir libs
 )
-call .venv\Scripts\activate
+
+set PYTHONPATH=libs
 
 cd scripts
 python install_requirements.py

@@ -1,8 +1,7 @@
 class OtherSettings:
     __main = {
         'show_logo': 'true',
-        'welcome_message': 'true',
-        'warning_about_exit': 'true'
+        'welcome_message': 'true'
     }
 
     @classmethod

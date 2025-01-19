@@ -1,5 +1,6 @@
 from .core import ConsoleAccount
 
+import ctypes
 import argparse
 import traceback
 
@@ -9,6 +10,15 @@ from rich.panel import Panel
 
 def main():
     app = ConsoleAccount()
+
+    def on_exit(event_type):
+        if event_type in (2, 3, 5):
+            app.exit_app()
+            return True
+        return False
+
+    handler = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint)(on_exit)
+    ctypes.windll.kernel32.SetConsoleCtrlHandler(handler, True)
 
     parser = argparse.ArgumentParser(
         formatter_class=lambda prog: argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=100)

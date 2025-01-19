@@ -25,6 +25,18 @@ from rich.align import Align
 from rich.box import HEAVY
 
 
+"""
+#######################################################################################################################
+
+    2. СДЕЛАТЬ ДИНАМИЧЕСКОЕ ПОДСТРАИВАНИЕ ЭЛЕМЕНТОВ ПОД РАЗМЕР ТЕРМИНАЛА
+    3. СДЕЛАТЬ ВКЛ/ВЫКЛ ПОКАЗЫВАНИЯ ШАГОВ ВЫПОЛНЕНИЯ ( ПОЛУЧАЮ СПИСОК ПРЕДМЕТОВ, СМОТРЮ ТВОИ БАЛЛЫ, ... )
+    4. СДЕЛАТЬ ОБЫЧНЫЙ ИНТЕРФЕЙС ( В НАСТРОКАХ ПОЛЬЗОВАТЕЛЬ МОЖЕТ ВКЛЮЧИТЬ, ЕСЛИ ЗАХОЧЕТ )
+    6. ПОКА ХЗ ЧЕ ЕЩЕ
+        
+#######################################################################################################################
+"""
+
+
 class ConsoleAccount(ConsoleAppSettings):
     __account: WebAccount
     __console: Console
@@ -40,7 +52,7 @@ class ConsoleAccount(ConsoleAppSettings):
         self.__console = Console()
         self.__settings_object = ConsoleAppSettings(default_settings)
         self.__settings_menu = SettingsMenu(self.__console, self.__settings_object, self.exit_app)
-        self.__json_manager = JSONManager('data')
+        self.__json_manager = JSONManager(directory='data', create=True)
         self.__width = self.__console.width
 
     def __login(self):
@@ -201,11 +213,6 @@ class ConsoleAccount(ConsoleAppSettings):
             'Закрыть программу'
         ]
 
-        if self.__settings_object._settings['warning_about_exit'] == 'true':
-            self.__warning_panel(
-                Text('# так как это консольная программа, закрывайте её через это меню #', justify='center')
-            )
-
         menu_style = questionary.Style(self.__settings_object._settings['selection_menu'])
         try:
             main_menu = questionary.unsafe_prompt(
@@ -316,11 +323,14 @@ class ConsoleAccount(ConsoleAppSettings):
                 return self.exit_app()
 
     def exit_app(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        try:
+            self.__logotype()
+        except AttributeError:
+            pass
+
         if self.__json_manager.find_file('user_data.json'):
             try:
-                os.system('cls' if os.name == 'nt' else 'clear')
-                self.__logotype()
-
                 if self.__settings_object._settings['welcome_message'] == 'true':
                     user_name = self.__json_manager.get_data('user_data.json')['name']
                     self.__console.print(
@@ -335,7 +345,7 @@ class ConsoleAccount(ConsoleAppSettings):
                 pass
 
         self.__console.print('-> ПРОГРАММА ЗАКРОЕТСЯ САМА <-', style='#8c8eff', justify='center')
-        
+
         if hasattr(self, f'_{self.__class__.__name__}__account'):
             self.__account.quit()
         exit(0)

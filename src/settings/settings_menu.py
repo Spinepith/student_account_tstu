@@ -21,7 +21,7 @@ class SettingsMenu(ConsoleAppSettings):
         self.__console = console
         self.__settings_object = settings_object
         self.__exit_app = exit_app
-        self.__json_manager = JSONManager('data')
+        self.__json_manager = JSONManager('data', create=True)
 
     def main_menu(self, logotype: Callable):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -136,7 +136,6 @@ class SettingsMenu(ConsoleAppSettings):
         element_choices = [
             'Показывать логотип',
             'Показывать приветствующий блок',
-            'Показывать предупреждение о закрытии программы',
             'НАЗАД'
         ]
 
@@ -440,6 +439,5 @@ settings = {
     'Автозаполнение пароля при входе': 'password_style',
     'Пароль в пункте "Показать логин и пароль"': 'show_password_menu_style',
     'Показывать логотип': 'show_logo',    # <------------------> СТИЛИ
-    'Показывать приветствующий блок': 'welcome_message',
-    'Показывать предупреждение о закрытии программы': 'warning_about_exit'
+    'Показывать приветствующий блок': 'welcome_message'
 }

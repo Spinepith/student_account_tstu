@@ -27,7 +27,7 @@ class ConsoleAppSettings:
 
         self._settings = self.__collect_all_settings()
         if not default_settings:
-            self.__json_manager.set_directory('data')
+            self.__json_manager.set_directory('data', create=True)
             self._settings = self.__check_user_settings()
             self.__hard_settings = self.__find_hard_settings(self._settings)
 
