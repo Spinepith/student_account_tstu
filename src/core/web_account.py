@@ -4,6 +4,7 @@ import time
 import fake_useragent
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 
 
 class WebAccount:
@@ -53,13 +54,20 @@ class WebAccount:
             password_input.send_keys(password)
             enter_button.click()
 
-            if 'notification_msg' in self.__browser.current_url or self.__browser.current_url == 'http://web-iais.admin.tstu.ru:7777/zion/wwv_flow.accept':
-                error = '# ' + self.__browser.find_element(By.XPATH, '//section[@id="uNotificationMessage"]/p[1]').text + '\n'
+            if ('notification_msg' in self.__browser.current_url or
+                    self.__browser.current_url == 'http://web-iais.admin.tstu.ru:7777/zion/wwv_flow.accept'):
+
+                error = '# ' + self.__browser.find_element(
+                    By.XPATH, '//section[@id="uNotificationMessage"]/p[1]'
+                ).text + '\n'
+
                 count_errors = len(self.__browser.find_elements(By.XPATH, '//ul[@class="htmldbUlErr"]/li'))
 
                 for i in range(count_errors):
                     time.sleep(1)
-                    error += '\n- ' + self.__browser.find_element(By.XPATH, f'//ul[@class="htmldbUlErr"]/li[{i + 1}]').text
+                    error += '\n- ' + self.__browser.find_element(
+                        By.XPATH, f'//ul[@class="htmldbUlErr"]/li[{i + 1}]'
+                    ).text
                 if 'Перейти' in error:
                     error = error.split(' (Перейти)')
                     error = ''.join(error)
@@ -141,6 +149,79 @@ class WebAccount:
             self.enter_login(self.__login, self.__password)
             return False, str(e)
 
+    def report_card(self):
+        try:
+            self.__check_main_page()
+
+            self.__browser.find_element(By.LINK_TEXT, 'Успеваемость').click()
+            self.__browser.find_element(By.XPATH, '//td[@headers="NUM_Z"]/a').click()
+
+            report_card_data = {}
+
+            try:
+                long_path = ('//section[@class="uRegion uBorderlessRegion uHideShowRegion  clearfix"]/'
+                             'div[@class="uRegionContent clearfix"]/table/tbody/tr')
+
+                long_path_formation = (
+                        long_path + '/td[1]/section/div[@class="uRegionContent clearfix"]/table/tbody/tr/td[1]/span'
+                )
+                formation_date = self.__browser.find_element(By.XPATH, long_path_formation).text
+
+                long_path_number = (
+                        long_path + '/td[2]/section/div[@class="uRegionContent clearfix"]/div/p[3]/span[2]'
+                )
+                number_report_card = self.__browser.find_element(By.XPATH, long_path_number).text
+
+                report_card_data['Дополнительные данные'] = [
+                    ['Дата формирования зачетной книжки', 'Номер зачетной книжки'],
+                    [formation_date, number_report_card]
+                ]
+            except NoSuchElementException:
+                pass
+
+            # СТРАННО СДЕЛАНО, ТК ЕСТЬ КЛАСС "uRegion uBorderlessRegion uHideShowRegion  clearfix" ПРОБЕЛ В ДРУГОМ МЕСТЕ
+            semesters_section = self.__browser.find_elements(
+                By.XPATH, '//section[@class="uRegion uBorderlessRegion  uHideShowRegion clearfix"]'
+            )
+
+            for semester in semesters_section:
+                semester.find_element(By.XPATH, './/div[@class="uRegionHeading"]/h1/a').click()
+                time.sleep(.5)
+
+                semester_data = []
+
+                pages = semester.find_element(By.XPATH, './/div[@class="uRegionContent clearfix"]/table/tbody')
+                for num in range(2):
+                    # ВОЗМОЖНО ПЕРЕСТАНЕТ РАБОТАТЬ, ТК ПОИСК ПО СТРАННОМУ АБСОЛЮТНОМУ ПУТИ
+                    long_path = ('.//tr/td[1]/section/div[@class="uRegionContent clearfix"]/'
+                                 'section/div[@class="uRegionContent clearfix"]/div/table/tbody/tr')
+
+                    if num == 1:
+                        long_path = ('.//tr/td[2]/section/div[@class="uRegionContent clearfix"]/section/'
+                                     'div[@class="uRegionContent clearfix"]/div/div/table/tbody/tr')
+
+                    rows_data = []
+                    for num_i, i in enumerate(pages.find_elements(By.XPATH, long_path)):
+                        if num_i == 1:
+                            row = [j.text for j in i.find_elements(By.TAG_NAME, 'th') if j.text]
+                        else:
+                            row = [j.text for j in i.find_elements(By.TAG_NAME, 'td') if j.text]
+
+                        if row:
+                            rows_data.append(row)
+                    semester_data.append(rows_data)
+                semester_number = semester.find_element(By.XPATH, './/div[@class="uRegionHeading"]/h1/span').text
+                report_card_data[semester_number] = semester_data
+
+            self.__main_page()
+            return report_card_data
+        except Exception as e:
+            print(e)
+            self.__browser.quit()
+            self.__open_browser()
+            self.enter_login(self.__login, self.__password)
+            return False, str(e)
+
     def get_lessons(self):
         return getattr(self, f'_{self.__class__.__name__}__lessons', None)
 
@@ -177,7 +258,9 @@ class WebAccount:
                         ]
 
                 else:
-                    header = self.__browser.find_elements(By.XPATH, '//div[@id="uOneCol"]/div/table[@class="table"]/tbody/tr/th')
+                    header = self.__browser.find_elements(
+                        By.XPATH, '//div[@id="uOneCol"]/div/table[@class="table"]/tbody/tr/th'
+                    )
                     lesson_data = [[i.text for i in header]]
 
                     student_data = self.__browser.find_elements(By.CLASS_NAME, 'tds')
@@ -206,7 +289,9 @@ class WebAccount:
 
                     new_tabs = []
                     for num in range(len(lessons)):
-                        link = self.__browser.find_elements(By.XPATH, '//td[@align="center"][@headers="KT_ALL"]/a[@title="Занятия/Оценки"]')[num]
+                        link = self.__browser.find_elements(
+                            By.XPATH, '//td[@align="center"][@headers="KT_ALL"]/a[@title="Занятия/Оценки"]'
+                        )[num]
                         new_tab = link.get_attribute('href')
 
                         self.__browser.execute_script(f'window.open("{new_tab}", "_blank")')
@@ -231,10 +316,15 @@ class WebAccount:
                             index_lesson = value.index(desired_item) if isinstance(value, list) else 0
 
                             journals[index_journal].click()
-                            marks = self.__browser.find_elements(By.XPATH, '//td[@align="center"][@headers="KT_ALL"]/a[@title="Занятия/Оценки"]')
+                            marks = self.__browser.find_elements(
+                                By.XPATH, '//td[@align="center"][@headers="KT_ALL"]/a[@title="Занятия/Оценки"]'
+                            )
                             marks[index_lesson].click()
 
-                            students = self.__browser.find_elements(By.XPATH, '//div[@id="uOneCol"]/div/table[@class="table"]/tbody/tr')
+                            students = self.__browser.find_elements(
+                                By.XPATH, '//div[@id="uOneCol"]/div/table[@class="table"]/tbody/tr'
+                            )
+
                             for i in students:
                                 extract_marks(desired_item, all_students=True, student=i)
                             break
@@ -242,14 +332,21 @@ class WebAccount:
                     for journal in range(len(journals)):
                         self.__browser.find_elements(By.LINK_TEXT, 'Журналы')[journal].click()
 
-                        lessons = [i.text.strip() for i in self.__browser.find_elements(By.XPATH, '//td[@headers="DISC"]')]
+                        lessons = [
+                            i.text.strip() for i in self.__browser.find_elements(By.XPATH, '//td[@headers="DISC"]')
+                        ]
 
                         desired_item = next((i for i in lessons if lesson.upper() in i.upper()), None)
                         if desired_item:
-                            marks = self.__browser.find_elements(By.XPATH, '//td[@align="center"][@headers="KT_ALL"]/a[@title="Занятия/Оценки"]')
+                            marks = self.__browser.find_elements(
+                                By.XPATH, '//td[@align="center"][@headers="KT_ALL"]/a[@title="Занятия/Оценки"]'
+                            )
                             marks[lessons.index(desired_item)].click()
 
-                            students = self.__browser.find_elements(By.XPATH, '//div[@id="uOneCol"]/div/table[@class="table"]/tbody/tr')
+                            students = self.__browser.find_elements(
+                                By.XPATH, '//div[@id="uOneCol"]/div/table[@class="table"]/tbody/tr'
+                            )
+
                             for i in students:
                                 extract_marks(desired_item, all_students=True, student=i)
                             break
@@ -334,7 +431,9 @@ class WebAccount:
                 rows = sections.find_elements(By.XPATH, './/table[@class="uReport uReportStandard"]/tbody/tr')
                 for row in rows:
                     if len(scores) <= 30 or not iam_found:
-                        iam = next((i for i in row.find_elements(By.XPATH, './/td[@headers="STUDNAME"]/font')), None)
+                        iam = next(
+                            (i for i in row.find_elements(By.XPATH, './/td[@headers="STUDNAME"]/font')), None
+                        )
                         if iam:
                             iam_found = True
                         else:
@@ -412,18 +511,24 @@ class WebAccount:
         self.__browser.find_element(By.LINK_TEXT, 'Выход').click()
 
     def __check_available(self):
-        error = next((i for i in self.__browser.find_elements(By.XPATH, '//section[@class="uRegion uNoHeading uErrorRegion"]/div/p/strong')), None)
+        error = next(
+            (i for i in self.__browser.find_elements(By.XPATH, '//section[@class="uRegion uNoHeading uErrorRegion"]/div/p/strong')), None
+        )
         return [False, error.text] if error else [True]
 
     def __check_groups(self):
-        if not next((i for i in self.__browser.find_elements(By.XPATH, '//header[@id="uHeader"]/nav/ul/li/a[@class="active"]') if i.text == 'Успеваемость'), None):
+        if not next(
+                (i for i in self.__browser.find_elements(By.XPATH, '//header[@id="uHeader"]/nav/ul/li/a[@class="active"]') if i.text == 'Успеваемость'), None
+        ):
             self.__browser.find_element(By.LINK_TEXT, 'Успеваемость').click()
 
         self.__groups = set(i.text for i in self.__browser.find_elements(By.XPATH, '//td[@headers="GROUP_NAME"]/span'))
         self.__groups = set(list(self.__groups)[::-1])
 
     def __check_main_page(self):
-        if not next((i for i in self.__browser.find_elements(By.XPATH, '//header[@id="uHeader"]/nav/ul/li/a[@class="active"]') if i.text == 'Информация'), None):
+        if not next(
+                (i for i in self.__browser.find_elements(By.XPATH, '//header[@id="uHeader"]/nav/ul/li/a[@class="active"]') if i.text == 'Информация'), None
+        ):
             self.__main_page()
 
     def __main_page(self):

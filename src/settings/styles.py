@@ -10,7 +10,8 @@ class Styles:
         'messages_box_style': ROUNDED,
         'welcome_box_style': ROUNDED,
         'menu_pointer_style': '>',
-        'table_box_style': ROUNDED
+        'table_box_style': ROUNDED,
+        'split_table_symbol_style': '#'
     }
 
     @classmethod

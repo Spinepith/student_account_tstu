@@ -25,14 +25,24 @@ from rich.align import Align
 from rich.box import HEAVY
 
 
+"""
+#######################################################################################################################
+
+    2. СДЕЛАТЬ ДИНАМИЧЕСКОЕ ПОДСТРАИВАНИЕ ЭЛЕМЕНТОВ ПОД РАЗМЕР ТЕРМИНАЛА
+    3. СДЕЛАТЬ ВКЛ/ВЫКЛ ПОКАЗЫВАНИЯ ШАГОВ ВЫПОЛНЕНИЯ ( ПОЛУЧАЮ СПИСОК ПРЕДМЕТОВ, СМОТРЮ ТВОИ БАЛЛЫ, ... )
+    4. СДЕЛАТЬ ОБЫЧНЫЙ ИНТЕРФЕЙС ( В НАСТРОКАХ ПОЛЬЗОВАТЕЛЬ МОЖЕТ ВКЛЮЧИТЬ, ЕСЛИ ЗАХОЧЕТ )
+    6. ПОКА ХЗ ЧЕ ЕЩЕ
+        
+#######################################################################################################################
+"""
+
+
 class ConsoleAccount(ConsoleAppSettings):
     __account: WebAccount
     __console: Console
     __settings_object: ConsoleAppSettings
     __settings_menu: SettingsMenu
     __json_manager: JSONManager
-
-    __width: Console.width
 
     def __init__(self, default_settings=False):
         super().__init__(default_settings)
@@ -41,7 +51,6 @@ class ConsoleAccount(ConsoleAppSettings):
         self.__settings_object = ConsoleAppSettings(default_settings)
         self.__settings_menu = SettingsMenu(self.__console, self.__settings_object, self.exit_app)
         self.__json_manager = JSONManager(directory='data', create=True)
-        self.__width = self.__console.width
 
     def __login(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -193,6 +202,7 @@ class ConsoleAccount(ConsoleAppSettings):
             'Мои личные данные',
             'Мои баллы по всем предметам',
             'Баллы по конкретному предмету',
+            'Зачетная книжка',
             'Расписание',
             'Мой рейтинг',
             'Показать логин и пароль',
@@ -225,6 +235,8 @@ class ConsoleAccount(ConsoleAppSettings):
                     self.__get_check_marks(all_lessons=True)
                 case 'Баллы по конкретному предмету':
                     self.__get_check_marks()
+                case 'Зачетная книжка':
+                    self.__get_report_card()
                 case 'Расписание':
                     self.__get_schedule()
                 case 'Мой рейтинг':
@@ -251,7 +263,7 @@ class ConsoleAccount(ConsoleAppSettings):
                         'name': 'back',
                         'qmark': '',
                         'message': '',
-                        'choices': [f'НАЗАД {"#" * (self.__width - 6)}'],
+                        'choices': [f'НАЗАД {"#" * (self.__console.width - 6)}'],
                         'style': back_style,
                         'pointer': self.__settings_object._settings['menu_pointer_style']
                     }
@@ -461,6 +473,43 @@ class ConsoleAccount(ConsoleAppSettings):
                 self.__console.print(self.__make_table(marks, 'Краткая информация'))
         else:
             self.__error_panel(marks[1])
+
+        self.__back()
+
+    def __get_report_card(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        self.__logotype(end='\n')
+
+        self.__warning_panel(
+            'Дождитесь завершения операции...\n'
+            'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
+        )
+
+        report_card = self.__account.report_card()
+
+        os.system('cls' if os.name == 'nt' else 'clear')
+        self.__logotype(end='\n')
+
+        if report_card:
+            additional = self.__make_table(report_card['Дополнительные данные'])
+            self.__console.print(additional, '\n')
+
+            for index, (key, value) in enumerate(list(report_card.items())[1:], start=1):
+                if value[0]:
+                    table = self.__make_table(value[0], key)
+                    self.__console.print(table, '\n')
+                if value[1]:
+                    table = self.__make_table(value[1], key)
+                    self.__console.print(table, '\n')
+
+                if index + 1 < len(report_card):
+                    if list(report_card.values())[index + 1] != [[], []]:
+                        self.__console.print(
+                            f'[{self.__settings_object._settings["split_table_line_color"]}]'
+                            f'{self.__settings_object._settings["split_table_symbol_style"]}' * self.__console.width, '\n\n'
+                        )
+        else:
+            self.__error_panel(report_card[1])
 
         self.__back()
 

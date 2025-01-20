@@ -25,7 +25,8 @@ class Colors:
     __table = {
         'table_header_color': '#afff87',
         'table_color': '#4d89c7',
-        'me_in_table_color': '#00875f'
+        'me_in_table_color': '#00875f',
+        'split_table_line_color': '#8967B3'
     }
 
     @classmethod
