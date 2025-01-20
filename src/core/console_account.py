@@ -25,18 +25,6 @@ from rich.align import Align
 from rich.box import HEAVY
 
 
-"""
-#######################################################################################################################
-
-    2. СДЕЛАТЬ ДИНАМИЧЕСКОЕ ПОДСТРАИВАНИЕ ЭЛЕМЕНТОВ ПОД РАЗМЕР ТЕРМИНАЛА
-    3. СДЕЛАТЬ ВКЛ/ВЫКЛ ПОКАЗЫВАНИЯ ШАГОВ ВЫПОЛНЕНИЯ ( ПОЛУЧАЮ СПИСОК ПРЕДМЕТОВ, СМОТРЮ ТВОИ БАЛЛЫ, ... )
-    4. СДЕЛАТЬ ОБЫЧНЫЙ ИНТЕРФЕЙС ( В НАСТРОКАХ ПОЛЬЗОВАТЕЛЬ МОЖЕТ ВКЛЮЧИТЬ, ЕСЛИ ЗАХОЧЕТ )
-    6. ПОКА ХЗ ЧЕ ЕЩЕ
-        
-#######################################################################################################################
-"""
-
-
 class ConsoleAccount(ConsoleAppSettings):
     __account: WebAccount
     __console: Console
@@ -353,7 +341,7 @@ class ConsoleAccount(ConsoleAppSettings):
     """ ФУНКЦИИ, ВЫДАЮЩИЕ ИНФОРМАЦИЮ, КОТОРАЯ ИНТЕРЕСУЕТ ПОЛЬЗОВАТЕЛЯ """
     def __get_personal_data(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         self.__warning_panel(
             'Дождитесь завершения операции...\n'
@@ -363,7 +351,7 @@ class ConsoleAccount(ConsoleAppSettings):
         personal_data = self.__account.personal_data()
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         if personal_data:
             personal_table = self.__make_table(personal_data['Личные данные'])
@@ -380,7 +368,7 @@ class ConsoleAccount(ConsoleAppSettings):
 
     def __get_check_marks(self, all_lessons=False):
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         if all_lessons:
             self.__warning_panel(
@@ -441,7 +429,7 @@ class ConsoleAccount(ConsoleAppSettings):
             marks, marks_details = self.__account.check_marks(lesson, details=True)
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         if marks and marks_details:
             user_name = self.__json_manager.get_data('user_data.json')['name']
@@ -478,7 +466,7 @@ class ConsoleAccount(ConsoleAppSettings):
 
     def __get_report_card(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         self.__warning_panel(
             'Дождитесь завершения операции...\n'
@@ -488,7 +476,7 @@ class ConsoleAccount(ConsoleAppSettings):
         report_card = self.__account.report_card()
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         if report_card:
             additional = self.__make_table(report_card['Дополнительные данные'])
@@ -506,7 +494,8 @@ class ConsoleAccount(ConsoleAppSettings):
                     if list(report_card.values())[index + 1] != [[], []]:
                         self.__console.print(
                             f'[{self.__settings_object._settings["split_table_line_color"]}]'
-                            f'{self.__settings_object._settings["split_table_symbol_style"]}' * self.__console.width, '\n\n'
+                            f'{self.__settings_object._settings["split_table_symbol_style"]}' * 
+                            self.__console.width, '\n\n'
                         )
         else:
             self.__error_panel(report_card[1])
@@ -515,7 +504,7 @@ class ConsoleAccount(ConsoleAppSettings):
 
     def __get_schedule(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         self.__warning_panel(
             'Дождитесь завершения операции...\n'
@@ -543,7 +532,7 @@ class ConsoleAccount(ConsoleAppSettings):
 
     def __get_my_rating(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         groups = self.__account.get_groups('check')
         if not groups:
@@ -554,7 +543,7 @@ class ConsoleAccount(ConsoleAppSettings):
             groups = self.__account.get_groups('get')
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         style = questionary.Style(self.__settings_object._settings['selection_menu'])
         try:
@@ -586,7 +575,7 @@ class ConsoleAccount(ConsoleAppSettings):
         rating = self.__account.my_rating(selected_group)
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         if rating:
             user_name = self.__json_manager.get_data('user_data.json')['name']
@@ -672,7 +661,7 @@ class ConsoleAccount(ConsoleAppSettings):
 
     def __logout(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.__logotype(end='\n')
+        self.__logotype()
 
         self.__warning_panel(
             'Дождитесь завершения выхода из аккаунта...\n'
@@ -694,8 +683,8 @@ class ConsoleAccount(ConsoleAppSettings):
                 safe_box=True)
             )
 
-            if end == '\n':
-                self.__console.print()
+            if end:
+                self.__console.print(end)
 
     def __make_table(self, data: list, table_name=None):
         table = Table(
