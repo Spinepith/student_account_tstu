@@ -154,6 +154,10 @@ class WebAccount:
             self.__check_main_page()
 
             self.__browser.find_element(By.LINK_TEXT, 'Успеваемость').click()
+
+            if not self.__groups:
+                self.__check_groups()
+
             self.__browser.find_element(By.XPATH, '//td[@headers="NUM_Z"]/a').click()
 
             report_card_data = {}
