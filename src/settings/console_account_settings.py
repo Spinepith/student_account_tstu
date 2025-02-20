@@ -24,7 +24,7 @@ class ConsoleAppSettings:
 
         self._default_settings = self.__collect_all_settings()
         self.__hard_settings = self.__find_hard_settings()
-        self._settings = self._default_settings
+        self._settings = self._default_settings.copy()
 
         if not default_settings:
             self.__json_manager.set_directory('data', create=True)
@@ -64,7 +64,7 @@ class ConsoleAppSettings:
                         for element1, element2 in self.__hard_settings.items():
                             if isinstance(element2, list):
                                 for old_key, old_value in element2:
-                                    if old_key == key and old_value != value:
+                                    if old_key == key:
                                         self._settings[element1] = self.__parse_hard_setting(old_key, value, element1)
 
                 return self._settings.copy()
@@ -75,6 +75,7 @@ class ConsoleAppSettings:
 
     def _update_settings(self):
         self._settings = self.__check_user_settings()
+        self.__hard_settings = self.__find_hard_settings(self._settings)
 
     def _one_default_setting(self, setting):
         self._settings[setting] = self._default_settings[setting]
