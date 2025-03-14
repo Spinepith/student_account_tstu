@@ -305,6 +305,12 @@ class ConsoleAccount(ConsoleAppSettings):
 
             self.__console.print(Rule())
             style = questionary.Style(self.__settings_object._settings['selection_menu'])
+
+            choices = [
+                'Перезапустить',
+                'Перезапустить с дефолтными настройками [ Рекомендуется ]',
+                'Закрыть программу'
+            ]
             try:
                 restart = questionary.unsafe_prompt(
                     [
@@ -313,7 +319,7 @@ class ConsoleAccount(ConsoleAppSettings):
                             'name': 'restart',
                             'qmark': '*',
                             'message': 'Перезапустить с дефолтными настройками? [ ваши настройки не потеряются ]',
-                            'choices': ['Перезапустить', 'Закрыть программу'],
+                            'choices': choices,
                             'style': style,
                             'pointer': '-'
                         }
@@ -321,14 +327,18 @@ class ConsoleAccount(ConsoleAppSettings):
                     true_color=self.__settings_object._settings['true_color']
                 )['restart']
 
-                if restart != 'Перезапустить':
+                if restart == 'Закрыть программу':
                     return self.exit_app()
 
                 try:
                     if hasattr(self, f'_{self.__class__.__name__}__account'):
                         self.__account.quit()
                         delattr(self, f'_{self.__class__.__name__}__account')
-                    self.run(default_settings=True)
+
+                    if restart == 'Перезапустить':
+                        self.run()
+                    elif restart == 'Перезапустить с дефолтными настройками [ Рекомендуется ]':
+                        self.run(default_settings=True)
                 except Exception as e:
                     self.__error_panel(e, important=True)
                     self.create_log('RUN_LOGGER', str(e))
