@@ -2,7 +2,9 @@ class OtherSettings:
     __main = {
         'show_logo': 'true',
         'welcome_message': 'true',
-        'warning_about_exit': 'true'
+        'warning_about_exit': 'true',
+        'save_education_data': 'true',
+        'encrypt_education_data': 'false'
     }
 
     @classmethod

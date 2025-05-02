@@ -53,19 +53,22 @@ class ConsoleAppSettings:
             if self.__json_manager.find_file('settings.json'):
                 user_settings = self.__json_manager.get_data('settings.json')
 
-                for key, value in user_settings.items():
-                    if key in self.__hard_settings and not isinstance(self.__hard_settings[key], list):
-                        self._settings[key] = self.__parse_hard_setting(key, value)
+                if user_settings:
+                    for key, value in user_settings.items():
+                        if key in self.__hard_settings and not isinstance(self.__hard_settings[key], list):
+                            self._settings[key] = self.__parse_hard_setting(key, value)
 
-                    elif key in self._settings and value != self._settings[key]:
-                        self._settings[key] = value
+                        elif key in self._settings and value != self._settings[key]:
+                            self._settings[key] = value
 
-                    elif key not in self.__hard_settings:
-                        for element1, element2 in self.__hard_settings.items():
-                            if isinstance(element2, list):
-                                for old_key, old_value in element2:
-                                    if old_key == key:
-                                        self._settings[element1] = self.__parse_hard_setting(old_key, value, element1)
+                        elif key not in self.__hard_settings:
+                            for element1, element2 in self.__hard_settings.items():
+                                if isinstance(element2, list):
+                                    for old_key, old_value in element2:
+                                        if old_key == key and old_value != value:
+                                            self._settings[element1] = self.__parse_hard_setting(old_key, value, element1)
+                else:
+                    self.__json_manager.remove_file('settings.json')
 
                 return self._settings.copy()
         except AttributeError:

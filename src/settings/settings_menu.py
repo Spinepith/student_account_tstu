@@ -139,6 +139,9 @@ class SettingsMenu(ConsoleAppSettings):
         element_choices = [
             'Показывать логотип',
             'Показывать приветствующий блок',
+            'Сохранять учебные данные [ баллы, расписание и тд. ]',
+            'Удалить сохраненные учебные данные [ баллы, расписание и тд. ]',
+            'Шифровать учебные данные [ увеличивает время получения данных ]',
             'НАЗАД'
         ]
 
@@ -147,7 +150,9 @@ class SettingsMenu(ConsoleAppSettings):
 
         user_settings = self.__make_menu('Что хотите поменять?', element_choices)
 
-        if user_settings != 'НАЗАД':
+        if 'Удалить сохраненные учебные данные' in user_settings:
+            self.__delete_education_data(logotype)
+        elif user_settings != 'НАЗАД':
             self.__new_other_setting(logotype, user_settings)
         elif user_settings == 'НАЗАД':
             self.main_menu(logotype)
@@ -199,7 +204,12 @@ class SettingsMenu(ConsoleAppSettings):
         os.system('cls' if os.name == 'nt' else 'clear')
         logotype()
 
+        if 'Рамк' not in element:
+            self.__display_element(element)
+
         if 'Рамк' in element:
+            self.__display_element(element, False)
+
             tables = []
             tables_width = 0
 
@@ -255,7 +265,13 @@ class SettingsMenu(ConsoleAppSettings):
         os.system('cls' if os.name == 'nt' else 'clear')
         logotype()
 
-        message = 'Настройка принимает значения [ TRUE, FALSE ]:'
+        self.__display_element(element)
+
+        if 'Шифровать' not in element:
+            message = 'Настройка принимает значения [ TRUE, FALSE ]:'
+        else:
+            message = 'После изменения нужно удалить сохраненные файлы. Настройка принимает значения [ TRUE, FALSE ]:'
+
         new_setting = self.__set_new_parameter(self.__other_settings_menu, element, message, logotype, bool)
         if new_setting is True:
             self.__back(self.__other_settings_menu, logotype)
@@ -270,6 +286,32 @@ class SettingsMenu(ConsoleAppSettings):
         self.__console.print(
             Panel(
                 Text('НАСТРОЙКИ УСПЕШНО СБРОШЕНЫ', justify='center'),
+                style=self.__settings_object._settings['warning'],
+                box=self.__settings_object._settings['messages_box_style'],
+                safe_box=True,
+                expand=True
+            )
+        )
+
+        self.__back(self.main_menu, logotype)
+
+    def __delete_education_data(self, logotype):
+        files = self.__json_manager.get_files()
+
+        counter = 0
+        for file in files:
+            if 'education' in file:
+                self.__json_manager.remove_file(file)
+                counter += 1
+
+        os.system('cls' if os.name == 'nt' else 'clear')
+        logotype()
+
+        text = 'ФАЙЛЫ УСПЕШНО УДАЛЕНЫ' if counter > 0 else 'ФАЙЛОВ НЕТ'
+
+        self.__console.print(
+            Panel(
+                Text(text, justify='center'),
                 style=self.__settings_object._settings['warning'],
                 box=self.__settings_object._settings['messages_box_style'],
                 safe_box=True,
@@ -329,10 +371,21 @@ class SettingsMenu(ConsoleAppSettings):
 
         return menu
 
-    def __display_element(self, element):
+    def __display_element(self, element, status: bool = True):
+        try:
+            element_status = f'\nСейчас: {self.__settings_object._settings[self.get_setting_from_dict(element)]}'
+        except KeyError:
+            element_status = f'\nСейчас: неизвестно'
+            for key, value in self.__settings_object._settings.items():
+                if isinstance(value, list):
+                    for item in value:
+                        if item[0] == self.get_setting_from_dict(element):
+                            element_status = f'\nСейчас: {item[1]}'
+                            break
+
         self.__console.print(
             Panel(
-                Text(element, justify='center'),
+                Text(f'{element}{element_status if status else ""}', justify='center'),
                 style=self.__settings_object._settings['information'],
                 box=self.__settings_object._settings['messages_box_style'],
                 safe_box=True,
@@ -455,5 +508,7 @@ settings = {
     'Пароль в пункте "Показать логин и пароль"': 'show_password_menu_style',
     'Показывать логотип': 'show_logo',    # <------------------> ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
     'Показывать приветствующий блок': 'welcome_message',
-    'Показывать предупреждение о правильном закрытии программы': 'warning_about_exit'
+    'Показывать предупреждение о правильном закрытии программы': 'warning_about_exit',
+    'Сохранять учебные данные [ баллы, расписание и тд. ]': 'save_education_data',
+    'Шифровать учебные данные [ увеличивает время получения данных ]': 'encrypt_education_data'
 }

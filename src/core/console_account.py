@@ -9,6 +9,8 @@ import logging
 import datetime
 import random
 
+from typing import Callable
+
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.fernet import Fernet
@@ -113,7 +115,7 @@ class ConsoleAccount(ConsoleAppSettings):
                 self.__json_manager.remove_file('user_data.json')
                 return False
 
-            login, password = user_data['login'], self.__crypto_password(user_data['password'])
+            login, password = user_data['login'], self.__encryption(user_data['password'])
 
             input_color = next(
                 value for key, value in self.__settings_object._settings["selection_menu"] if key == 'answer'
@@ -147,7 +149,7 @@ class ConsoleAccount(ConsoleAppSettings):
             self.__console.print('АВТОРИЗАЦИЯ ПРОШЛА УСПЕШНО',
                                  style=f'bold {self.__settings_object._settings["input"]}')
 
-            password = self.__crypto_password(password, encrypt=True)
+            password = self.__encryption(password, encrypt=True)
 
             user_data = {
                 'name': auth[1],
@@ -266,25 +268,34 @@ class ConsoleAccount(ConsoleAppSettings):
         except KeyboardInterrupt:
             return self.exit_app()
 
-    def __back(self):
+    def __back(self, update: Callable = None):
         back_style = questionary.Style(self.__settings_object._settings['selection_menu'])
 
+        if update is not None:
+            choices = [f'ОБНОВИТЬ {"#" * (self.__console.width - 9)}', f'НАЗАД    {"#" * (self.__console.width - 9)}']
+        else:
+            choices = [f'НАЗАД {"#" * (self.__console.width - 6)}']
+
         try:
-            questionary.unsafe_prompt(
+            selection = questionary.unsafe_prompt(
                 [
                     {
                         'type': 'select',
                         'name': 'back',
                         'qmark': '',
                         'message': '',
-                        'choices': [f'НАЗАД {"#" * (self.__console.width - 6)}'],
+                        'choices': choices,
                         'style': back_style,
                         'pointer': self.__settings_object._settings['menu_pointer_style']
                     }
                 ],
                 true_color=self.__settings_object._settings['true_color']
-            )
-            self.__menu()
+            )['back']
+
+            if 'НАЗАД' in selection:
+                self.__menu()
+            else:
+                update()
         except KeyboardInterrupt:
             self.exit_app()
 
@@ -375,7 +386,7 @@ class ConsoleAccount(ConsoleAppSettings):
         sys.exit(0)
 
     """ ФУНКЦИИ, ВЫДАЮЩИЕ ИНФОРМАЦИЮ, КОТОРАЯ ИНТЕРЕСУЕТ ПОЛЬЗОВАТЕЛЯ """
-    def __get_personal_data(self):
+    def __get_personal_data(self, update: bool = False):
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
@@ -384,12 +395,21 @@ class ConsoleAccount(ConsoleAppSettings):
             'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
         )
 
-        personal_data = self.__account.personal_data()
+        updated = False
+        personal_data = None
+
+        if not update:
+            personal_data = self.__education_path('personal_data.json')
+
+        if personal_data is None:
+            personal_data = self.__account.personal_data()
+            self.__education_path('personal_data.json', personal_data)
+            updated = True
 
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
-        if personal_data:
+        if type(personal_data) is dict:
             personal_table = self.__make_table(personal_data['Личные данные'])
             financing_table = self.__make_table(personal_data['Финансирование'])
             orders_table = self.__make_table(personal_data['Приказы'])
@@ -397,23 +417,46 @@ class ConsoleAccount(ConsoleAppSettings):
             self.__console.print(personal_table)
             self.__console.print(financing_table, '\n')
             self.__console.print(orders_table)
+
+            if not updated:
+                self.__warning_panel(Text('НЕ ОБНОВЛЕНО', justify='center'), start='\n', end='\n')
         else:
             self.__error_panel(personal_data[1])
 
-        self.__back()
+        self.__back(lambda: self.__get_personal_data(update=True))
 
-    def __get_check_marks(self, all_lessons=False):
+    def __get_check_marks(self, all_lessons=False, update_lessons: bool = False, update_marks: bool = False):
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
+
+        marks_updated = False
 
         if all_lessons:
             self.__warning_panel(
                 'Дождитесь завершения операции...\n'
                 'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
             )
-            marks, marks_details = self.__account.check_marks(details=True)
+
+            marks, marks_details = None, None
+
+            if not update_marks:
+                marks, marks_details = self.__education_path('all_marks.json'), self.__education_path('all_marks_details.json')
+
+            if marks is None or marks_details is None:
+                marks, marks_details = self.__account.check_marks(details=True)
+                self.__education_path('all_marks.json', marks)
+                self.__education_path('all_marks_details.json', marks_details)
+                self.__education_path('lessons', self.__account.get_lessons())
+                marks_updated = True
         else:
-            lessons = self.__account.get_lessons()
+            lessons = None
+
+            if not update_lessons:
+                lessons = self.__education_path('lessons.json')
+
+            if lessons is None:
+                lessons = self.__account.get_lessons()
+
             if not lessons:
                 self.__warning_panel(
                     'Чтобы вернуться в меню, напишите "назад"\n'
@@ -437,6 +480,7 @@ class ConsoleAccount(ConsoleAppSettings):
                 except KeyboardInterrupt:
                     return self.exit_app()
             else:
+                self.__education_path('lessons.json', lessons)
                 try:
                     select_lesson_style = questionary.Style(self.__settings_object._settings['selection_menu'])
                     lesson = questionary.unsafe_prompt(
@@ -447,7 +491,7 @@ class ConsoleAccount(ConsoleAppSettings):
                                 'qmark': '*',
                                 'message': 'Выберите дисциплину:',
                                 'choices': list(
-                                    [lesson for journal in lessons.values() for lesson in journal] + ['НАЗАД']),
+                                    [lesson for journal in lessons.values() for lesson in journal] + ['ОБНОВИТЬ', 'НАЗАД']),
                                 'style': select_lesson_style,
                                 'pointer': self.__settings_object._settings['menu_pointer_style']
                             }
@@ -460,6 +504,9 @@ class ConsoleAccount(ConsoleAppSettings):
             if lesson.upper() == 'НАЗАД' or lesson.upper() == 'BACK':
                 self.__menu()
 
+            if lesson.upper() == 'ОБНОВИТЬ' or lesson.upper() == 'UPDATE':
+                lesson = 'ДИСЦИПЛИНЫ'
+
             if lesson.upper() == 'ДИСЦИПЛИНЫ' or lesson.upper() == 'LESSONS':
                 os.system('cls' if os.name == 'nt' else 'clear')
                 self.__logotype()
@@ -468,19 +515,48 @@ class ConsoleAccount(ConsoleAppSettings):
                     'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
                 )
                 self.__account.get_lessons(search=True)
-                return self.__get_check_marks()
+                return self.__get_check_marks(all_lessons, update_lessons=True, update_marks=True)
 
             self.__warning_panel(
                 'Дождитесь завершения операции...\n'
                 'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК',
                 start='\n'
             )
-            marks, marks_details = self.__account.check_marks(lesson, details=True)
+
+            marks, marks_details = None, None
+
+            if not update_marks:
+                lesson = '_'.join(lesson.split())
+                lesson1, lesson2 = '', ''
+                founded = 0
+
+                for file in self.__json_manager.get_files():
+                    if founded < 2:
+                        if 'education' in file and lesson.lower() in file.lower() and 'details' not in file:
+                            lesson1 = file
+                            founded += 1
+                        elif 'education' in file and lesson.lower() in file.lower() and 'details' in file:
+                            lesson2 = file
+                            founded += 1
+                    else:
+                        break
+
+                if founded == 2:
+                    marks = self.__education_path(os.path.basename(lesson1))
+                    marks_details = self.__education_path(os.path.basename(lesson2))
+
+            if marks is None or marks_details is None:
+                lesson = ' '.join(lesson.split('_'))
+                marks, marks_details = self.__account.check_marks(lesson, details=True)
+                lesson = list(marks.keys())[0]
+                self.__education_path(f'marks_{"_".join(lesson.split())}.json', marks)
+                self.__education_path(f'marks_details_{"_".join(lesson.split())}.json', marks_details)
+                marks_updated = True
 
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
-        if marks and marks_details:
+        if type(marks) is dict and type(marks_details) is dict:
             user_name = self.__json_manager.get_data('user_data.json')['name']
             user_name = next((name for name in marks.keys() if name == user_name), None)
 
@@ -508,12 +584,15 @@ class ConsoleAccount(ConsoleAppSettings):
                 for table in marks_details:
                     self.__console.print(self.__make_table(table[1:], table[0]), '\n')
                 self.__console.print(self.__make_table(marks, 'Краткая информация'))
+
+            if not marks_updated:
+                self.__warning_panel(Text('НЕ ОБНОВЛЕНО', justify='center'), start='\n', end='\n')
         else:
             self.__error_panel(marks[1])
 
-        self.__back()
+        self.__back(lambda: self.__get_check_marks(all_lessons, update_marks=True))
 
-    def __get_report_card(self):
+    def __get_report_card(self, update: bool = False):
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
@@ -522,12 +601,21 @@ class ConsoleAccount(ConsoleAppSettings):
             'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
         )
 
-        report_card = self.__account.report_card()
+        updated = False
+        report_card = None
+
+        if not update:
+            report_card = self.__education_path('report_card.json')
+
+        if report_card is None:
+            report_card = self.__account.report_card()
+            self.__education_path('report_card.json', report_card)
+            updated = True
 
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
-        if report_card:
+        if type(report_card) is dict:
             additional = self.__make_table(report_card['Дополнительные данные'])
             self.__console.print(additional, '\n')
 
@@ -546,12 +634,15 @@ class ConsoleAccount(ConsoleAppSettings):
                             f'{self.__settings_object._settings["split_table_symbol_style"]}' *
                             self.__console.width, '\n\n'
                         )
+
+                if not updated:
+                    self.__warning_panel(Text('НЕ ОБНОВЛЕНО', justify='center'), start='\n', end='\n')
         else:
             self.__error_panel(report_card[1])
 
-        self.__back()
+        self.__back(lambda: self.__get_report_card(update=True))
 
-    def __get_schedule(self):
+    def __get_schedule(self, update: bool = False):
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
@@ -560,12 +651,21 @@ class ConsoleAccount(ConsoleAppSettings):
             'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
         )
 
-        schedule = self.__account.schedule()
+        updated = False
+        schedule = None
+
+        if not update:
+            schedule = self.__education_path('schedule.json')
+
+        if schedule is None:
+            schedule = self.__account.schedule()
+            self.__education_path('schedule.json', schedule)
+            updated = True
 
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
-        if schedule:
+        if type(schedule) is dict:
             weeks = list(i for i in schedule.keys())
 
             schedule_table1 = self.__make_table(schedule[weeks[1]], weeks[1])
@@ -574,25 +674,39 @@ class ConsoleAccount(ConsoleAppSettings):
             self.__inf_panel(schedule[weeks[0]], center=True)
             self.__console.print('\n', schedule_table1, '\n')
             self.__console.print(schedule_table2)
+
+            if not updated:
+                self.__warning_panel(Text('НЕ ОБНОВЛЕНО', justify='center'), start='\n', end='\n')
         else:
             self.__error_panel(schedule[1])
 
-        self.__back()
+        self.__back(lambda: self.__get_schedule(update=True))
 
-    def __get_my_rating(self):
+    def __get_my_rating(self, update_groups: bool = False, update_rating: bool = False):
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
-        groups = self.__account.get_groups('check')
-        if not groups:
-            self.__warning_panel(
-                'Узнаю в каких группах вы есть...\n'
-                'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
-            )
-            groups = self.__account.get_groups('get')
+        self.__warning_panel(
+            'Узнаю в каких группах вы есть...\n'
+            'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК'
+        )
+
+        groups_updated = False
+        groups = None
+
+        if not update_groups:
+            groups = self.__education_path('groups.json')
+
+        if groups is None:
+            groups = {'GROUPS': list(self.__account.get_groups('get'))}
+            self.__education_path('groups.json', groups)
+            groups_updated = True
 
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
+
+        if not groups_updated:
+            self.__warning_panel(Text('НЕ ОБНОВЛЕНО', justify='center'), end='\n')
 
         style = questionary.Style(self.__settings_object._settings['selection_menu'])
         try:
@@ -603,7 +717,7 @@ class ConsoleAccount(ConsoleAppSettings):
                         'name': 'select_group',
                         'qmark': '*',
                         'message': 'Выберите группу:',
-                        'choices': list(groups) + ['НАЗАД'],
+                        'choices': groups['GROUPS'] + ['ОБНОВИТЬ', 'НАЗАД'],
                         'style': style,
                         'pointer': self.__settings_object._settings['menu_pointer_style']
                     }
@@ -613,7 +727,9 @@ class ConsoleAccount(ConsoleAppSettings):
         except KeyboardInterrupt:
             return self.exit_app()
 
-        if selected_group == 'НАЗАД':
+        if selected_group == 'ОБНОВИТЬ':
+            return self.__get_my_rating(update_groups=True, update_rating=True)
+        elif selected_group == 'НАЗАД':
             self.__menu()
 
         self.__warning_panel(
@@ -621,12 +737,23 @@ class ConsoleAccount(ConsoleAppSettings):
             'ПОЖАЛУЙСТА, НЕ ЗАКРЫВАЙТЕ ПРОГРАММУ, ЧТОБЫ ИЗБЕЖАТЬ ОШИБОК',
             start='\n'
         )
-        rating = self.__account.my_rating(selected_group)
+
+        rating_updated = False
+        rating = None
+
+        if not update_rating:
+            rating = self.__education_path(f'rating_{selected_group}.json')
+
+        if rating is None:
+            rating = self.__account.my_rating(selected_group)
+            if type(rating) is dict:
+                self.__education_path(f'rating_{selected_group}.json', rating)
+            rating_updated = True
 
         os.system('cls' if os.name == 'nt' else 'clear')
         self.__logotype()
 
-        if rating:
+        if type(rating) is dict:
             user_name = self.__json_manager.get_data('user_data.json')['name']
             selected_color = f'[{self.__settings_object._settings["me_in_table_color"]}]'
 
@@ -639,10 +766,13 @@ class ConsoleAccount(ConsoleAppSettings):
 
                 rating_table = self.__make_table(value, key)
                 self.__console.print(rating_table, '\n')
+
+                if not rating_updated:
+                    self.__warning_panel(Text('НЕ ОБНОВЛЕНО', justify='center'), end='\n')
         else:
             self.__error_panel(rating[1])
 
-        self.__back()
+        self.__back(lambda: self.__get_my_rating(update_rating=True))
 
     def __show_login_password(self, show_password=False):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -694,7 +824,7 @@ class ConsoleAccount(ConsoleAppSettings):
             except KeyboardInterrupt:
                 return self.exit_app()
         else:
-            password = self.__crypto_password(password)
+            password = self.__encryption(password)
             self.__console.print(f'[{self.__settings_object._settings["input"]}]* Пароль: '
                                  f'[{input_color}]{password}')
 
@@ -754,18 +884,49 @@ class ConsoleAccount(ConsoleAppSettings):
 
         return table
 
-    @staticmethod
-    def __crypto_password(password: str, encrypt: bool = False):
-        secret = 'supER_MeGa_SEcrit112'
+    def __education_path(self, file: str, data: dict = None):
+        os.makedirs(os.path.join('data', 'education'), exist_ok=True)
 
-        kdf = PBKDF2HMAC(algorithm=SHA256(), length=32, salt=b'ABOBA123', iterations=100000)
-        key = urlsafe_b64encode(kdf.derive(secret.encode()))
-        cipher = Fernet(key)
+        if not file.endswith('.json'):
+            file += '.json'
+        file = os.path.join('education', file)
 
-        if encrypt:
-            return cipher.encrypt(password.encode()).decode()
-        else:
-            return cipher.decrypt(password.encode()).decode()
+        if data and self.__settings_object._settings['save_education_data'] == 'true':
+            if self.__settings_object._settings['encrypt_education_data'] == 'true':
+                self.__json_manager.write_data(file, self.__encryption(data, True))
+            else:
+                self.__json_manager.write_data(file, data)
+
+        if data is None:
+            if self.__json_manager.find_file(file):
+                if self.__settings_object._settings['encrypt_education_data'] == 'true':
+                    return self.__encryption(self.__json_manager.get_data(file))
+                else:
+                    return self.__json_manager.get_data(file)
+            else:
+                return None
+
+    def __encryption(self, data, encrypt: bool = False):
+        if isinstance(data, list):
+            return [self.__encryption(item, encrypt) for item in data]
+
+        elif isinstance(data, dict):
+            return {
+                self.__encryption(key, encrypt): self.__encryption(value, encrypt)
+                for key, value in data.items()
+            }
+
+        elif isinstance(data, str):
+            secret = 'supER_MeGa_SEcrit112'
+
+            kdf = PBKDF2HMAC(algorithm=SHA256(), length=32, salt=b'ABOBA123', iterations=100000)
+            key = urlsafe_b64encode(kdf.derive(secret.encode()))
+            cipher = Fernet(key)
+
+            if encrypt:
+                return cipher.encrypt(data.encode()).decode()
+            else:
+                return cipher.decrypt(data.encode()).decode()
 
     @staticmethod
     def create_log(logger_name: str, exception: str):
